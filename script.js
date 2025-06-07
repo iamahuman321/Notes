@@ -304,21 +304,36 @@ function showPage(pageId) {
 // Notes management
 function renderNotes() {
   const container = document.getElementById("notesContainer")
+
+  // Query emptyState fresh each time to avoid stale reference
   const emptyState = document.getElementById("emptyState")
+
+  console.log("renderNotes called with currentFilter:", currentFilter)
+  console.log("Total notes count:", notes.length)
 
   const filteredNotes = notes.filter((note) => {
     if (currentFilter === "all") return true
+    // Defensive check: ensure note.categories is an array
+    if (!Array.isArray(note.categories)) return false
     return note.categories.includes(currentFilter)
   })
 
+  console.log("Filtered notes count:", filteredNotes.length)
+
   if (filteredNotes.length === 0) {
     container.innerHTML = ""
-    container.appendChild(emptyState)
-    emptyState.style.display = "block"
+    if (emptyState instanceof Node) {
+      container.appendChild(emptyState)
+      emptyState.style.display = "block"
+    } else {
+      console.error("emptyState is not a DOM Node:", emptyState)
+    }
     return
   }
 
-  emptyState.style.display = "none"
+  if (emptyState instanceof Node) {
+    emptyState.style.display = "none"
+  }
 
   container.innerHTML = filteredNotes
     .map((note) => {
@@ -679,8 +694,15 @@ function renderCategoryChips(selectedCategories = []) {
 
 function setFilter(filterId) {
   currentFilter = filterId
+  console.log("setFilter called with filterId:", filterId)
   renderCategories()
   renderNotes()
+  // Also update the active state of category chips in the editor if open
+  if (currentNote) {
+    renderCategoryChips(currentNote.categories)
+  }
+  // Reset currentNote to null when filter changes to avoid stale note display
+  currentNote = null
 }
 
 function addCategory() {
@@ -705,6 +727,11 @@ function addCategory() {
   renderCategories()
   input.value = ""
   showToast(t("categoryAdded"))
+
+  // If current filter is 'all', refresh notes to show new category notes
+  if (currentFilter === "all") {
+    renderNotes()
+  }
 }
 
 function deleteCategoryItem(categoryId) {
@@ -1073,17 +1100,9 @@ function setupAutoSave() {
   contentTextarea.addEventListener("input", triggerAutoSave)
 }
 
-// Event listeners
+/* Event listeners */
 function setupEventListeners() {
-  // Navigation
-  document.getElementById("menuBtn").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.toggle("open")
-  })
-
-  document.getElementById("sidebarOverlay").addEventListener("click", () => {
-    document.getElementById("sidebar").classList.remove("open")
-  })
-
+  // Back button behavior
   document.getElementById("backBtn").addEventListener("click", () => {
     if (currentPage === "editor") {
       showPage("notesPage")
@@ -1092,16 +1111,42 @@ function setupEventListeners() {
     }
   })
 
+  // Settings button behavior
   document.getElementById("settingsBtn").addEventListener("click", () => {
     showPage("settingsPage")
   })
 
+  // Category button behavior
+  const categoryBtn = document.getElementById("categoryBtn")
+  if (categoryBtn) {
+    categoryBtn.addEventListener("click", () => {
+      showPage("categoriesPage")
+    })
+  }
+
   // Navigation items
   document.querySelectorAll(".nav-item").forEach((item) => {
     item.addEventListener("click", (e) => {
+      const href = item.getAttribute("href")
+      if (href && href !== "#" && !href.startsWith("#")) {
+        e.preventDefault()
+        const sidebar = document.getElementById("sidebar")
+        const sidebarOverlay = document.getElementById("sidebarOverlay")
+        sidebar.classList.remove("open")
+        sidebarOverlay.classList.remove("open")
+        setTimeout(() => {
+          window.location.href = href
+        }, 300)
+        return
+      }
       e.preventDefault()
       const page = item.getAttribute("data-page")
       showPage(page + "Page")
+      const sidebar = document.getElementById("sidebar")
+      const sidebarOverlay = document.getElementById("sidebarOverlay")
+      sidebar.classList.remove("open")
+      sidebarOverlay.classList.remove("open")
+      e.stopPropagation()
     })
   })
 
