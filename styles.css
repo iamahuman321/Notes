@@ -867,7 +867,7 @@ body {
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
+  backg round: none;
   border: none;
   color: var(--text);
   cursor: pointer;
@@ -1111,8 +1111,29 @@ button:focus,
 input:focus,
 textarea:focus,
 select:focus {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
+  outline: none;
+  outline-offset: 0;
+}
+
+/* Remove red outline globally on focus and active states */
+*:focus,
+*:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Improve touch responsiveness */
+button,
+a,
+input,
+textarea,
+select {
+  touch-action: manipulation;
 }
 
 /* Print Styles */
